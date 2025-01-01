@@ -143,3 +143,46 @@ class NotificationPreferenceForm(forms.ModelForm):
                 (168, 'Weekly')
             ])
         }
+        
+        
+class DirectTranslationForm(forms.ModelForm):
+    class Meta:
+        model = TranslationRequest
+        fields = [
+            'title', 'description', 'source_language', 'target_language',
+            'deadline', 'translation_type', 'address', 'original_document',
+            'client_price', 'translator_price', 'client', 'translator'
+        ]
+        widgets = {
+            'deadline': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'client': forms.Select(attrs={'class': 'select2'}),
+            'translator': forms.Select(attrs={'class': 'select2'})
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['client'].queryset = User.objects.filter(
+            profile__role='CLIENT'
+        )
+        self.fields['translator'].queryset = User.objects.filter(
+            profile__role='TRANSLATOR'
+        )
+
+class QuoteManagementForm(forms.ModelForm):
+    class Meta:
+        model = TranslationRequest
+        fields = ['client_price', 'translator_price', 'notes']
+
+class AssignTranslatorForm(forms.ModelForm):
+    class Meta:
+        model = TranslationRequest
+        fields = ['translator', 'translator_price', 'notes']
+        widgets = {
+            'translator': forms.Select(attrs={'class': 'select2'})
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['translator'].queryset = User.objects.filter(
+            profile__role='TRANSLATOR'
+        )

@@ -23,4 +23,61 @@ urlpatterns = [
     path('client/notifications/', views.notification_list, name='client_notifications'),
     path('client/notification-settings/', 
          views.notification_settings, name='client_notification_settings'),
+        # Translator URLs
+    path('translator/dashboard/', 
+         views.translator_dashboard, 
+         name='translator_dashboard'),
+    
+    path('translator/translation/<int:pk>/', 
+         views.translation_detail, 
+         name='translator_translation_detail'),
+    
+    path('translator/translation/<int:pk>/upload/', 
+         views.upload_translation, 
+         name='translator_upload'),
+    
+    path('translator/translation/<int:pk>/download/', 
+         views.download_original, 
+         name='translator_download_original'),
+    
+    path('translator/payments/', 
+         views.payment_history, 
+         name='translator_payments'),
+    
+    path('translator/history/', 
+         views.translation_history, 
+         name='translator_history'),
+    
+        path('admin/dashboard/', 
+         views.admin_dashboard, 
+         name='admin_dashboard'),
+    
+    path('admin/translation/create/', 
+         views.create_translation, 
+         name='admin_create_translation'),
+    
+    path('admin/quotes/', 
+         views.manage_quotes, 
+         name='admin_manage_quotes'),
+    
+    path('admin/quote/<int:pk>/process/', 
+         views.process_quote, 
+         name='admin_process_quote'),
+    
+    path('admin/translations/', 
+         views.translation_list, 
+         name='admin_translation_list'),
+    
+    path('admin/translation/<int:pk>/assign/', 
+         views.assign_translator, 
+         name='admin_assign_translator'),
+    
+    path('admin/payments/', 
+         views.payment_management, 
+         name='admin_payments'),
+    
+    path('admin/reports/', 
+         views.reports, 
+         name='admin_reports'),
+
 ]

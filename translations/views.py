@@ -25,6 +25,22 @@ from .models import TranslationRequest
 from .forms import QuoteRequestForm
 from .models import NotificationPreference, TranslationRequest
 from .forms import ClientProfileUpdateForm, NotificationPreferenceForm
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.utils import timezone
+from django.db.models import Sum
+from django.http import HttpResponse
+from .models import TranslationRequest, TranslationHistory
+from .forms import TranslatedDocumentForm, TranslationStatusUpdateForm
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import user_passes_test
+from django.contrib import messages
+from django.db.models import Sum, Count, Avg
+from django.utils import timezone
+from datetime import timedelta
+from .models import TranslationRequest, UserProfile, TranslationHistory
+from .forms import DirectTranslationForm, QuoteManagementForm, AssignTranslatorForm
 
 def generate_otp():
     return ''.join([str(random.randint(0, 9)) for _ in range(6)])
@@ -357,3 +373,280 @@ def notification_list(request):
     return render(request, 'client/notifications.html', {
         'notifications': sorted(notifications, key=lambda x: x['date'], reverse=True)
     })
+    
+@login_required
+def translator_dashboard(request):
+    # Récupérer toutes les traductions assignées au traducteur
+    translations = TranslationRequest.objects.filter(
+        translator=request.user
+    ).order_by('-created_at')
+    
+    # Filtrer par statut si spécifié
+    status = request.GET.get('status')
+    if status:
+        translations = translations.filter(status=status)
+    
+    context = {
+        'translations': translations,
+        'pending_count': translations.filter(status='ASSIGNED').count(),
+        'in_progress_count': translations.filter(status='IN_PROGRESS').count(),
+        'completed_count': translations.filter(status='COMPLETED').count(),
+        'earnings': translations.filter(status='COMPLETED').aggregate(
+            total=Sum('translator_price'))['total'] or 0
+    }
+    
+    return render(request, 'translator/dashboard.html', context)
+
+@login_required
+def translation_detail(request, pk):
+    translation = get_object_or_404(TranslationRequest, pk=pk, translator=request.user)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        form = TranslationStatusUpdateForm(request.POST)
+        
+        if form.is_valid():
+            notes = form.cleaned_data['notes']
+            
+            if action == 'accept':
+                translation.status = 'IN_PROGRESS'
+                translation.start_date = timezone.now()
+                messages.success(request, 'Translation accepted successfully.')
+                
+            elif action == 'reject':
+                translation.status = 'REJECTED'
+                messages.warning(request, 'Translation rejected.')
+                
+            elif action == 'complete':
+                if not translation.translated_document:
+                    messages.error(request, 'Please upload the translated document first.')
+                    return redirect('translator:translation_detail', pk=pk)
+                translation.status = 'COMPLETED'
+                translation.completed_date = timezone.now()
+                messages.success(request, 'Translation marked as complete.')
+            
+            translation.save()
+            
+            # Créer un historique
+            TranslationHistory.objects.create(
+                translation=translation,
+                status=translation.status,
+                changed_by=request.user,
+                notes=notes
+            )
+            
+            return redirect('translator:dashboard')
+    else:
+        form = TranslationStatusUpdateForm()
+    
+    return render(request, 'translator/translation_detail.html', {
+        'translation': translation,
+        'form': form
+    })
+
+@login_required
+def upload_translation(request, pk):
+    translation = get_object_or_404(TranslationRequest, pk=pk, translator=request.user)
+    
+    if request.method == 'POST':
+        form = TranslatedDocumentForm(
+            request.POST, 
+            request.FILES, 
+            instance=translation
+        )
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Document uploaded successfully.')
+            return redirect('translator:translation_detail', pk=pk)
+    else:
+        form = TranslatedDocumentForm(instance=translation)
+    
+    return render(request, 'translator/upload_document.html', {
+        'form': form,
+        'translation': translation
+    })
+
+@login_required
+def download_original(request, pk):
+    translation = get_object_or_404(TranslationRequest, pk=pk, translator=request.user)
+    if translation.original_document:
+        response = HttpResponse(translation.original_document.read())
+        response['Content-Disposition'] = f'attachment; filename="{translation.original_document.name}"'
+        return response
+    messages.error(request, 'No document found.')
+    return redirect('translator:translation_detail', pk=pk)
+
+@login_required
+def payment_history(request):
+    completed_translations = TranslationRequest.objects.filter(
+        translator=request.user,
+        status='COMPLETED'
+    ).order_by('-completed_date')
+    
+    total_earnings = completed_translations.aggregate(
+        total=Sum('translator_price'))['total'] or 0
+    
+    monthly_earnings = completed_translations.filter(
+        completed_date__month=timezone.now().month
+    ).aggregate(total=Sum('translator_price'))['total'] or 0
+    
+    return render(request, 'translator/payment_history.html', {
+        'translations': completed_translations,
+        'total_earnings': total_earnings,
+        'monthly_earnings': monthly_earnings
+    })
+
+@login_required
+def translation_history(request):
+    history = TranslationHistory.objects.filter(
+        translation__translator=request.user
+    ).select_related('translation').order_by('-changed_at')
+    
+    return render(request, 'translator/translation_history.html', {
+        'history': history
+    })
+    
+def is_admin(user):
+    return user.is_authenticated and user.profile.role == 'ADMIN'
+
+@user_passes_test(is_admin)
+def admin_dashboard(request):
+    # Statistiques générales
+    context = {
+        'total_translations': TranslationRequest.objects.count(),
+        'pending_quotes': TranslationRequest.objects.filter(status='QUOTE').count(),
+        'active_translations': TranslationRequest.objects.filter(
+            status__in=['ASSIGNED', 'IN_PROGRESS']
+        ).count(),
+        'completed_translations': TranslationRequest.objects.filter(
+            status='COMPLETED'
+        ).count(),
+        'total_revenue': TranslationRequest.objects.filter(
+            status='COMPLETED'
+        ).aggregate(Sum('client_price'))['client_price__sum'] or 0,
+    }
+    return render(request, 'admin/dashboard.html', context)
+
+@user_passes_test(is_admin)
+def create_translation(request):
+    if request.method == 'POST':
+        form = DirectTranslationForm(request.POST, request.FILES)
+        if form.is_valid():
+            translation = form.save(commit=False)
+            translation.status = 'ASSIGNED'
+            translation.assigned_by = request.user
+            translation.save()
+            messages.success(request, 'Translation created successfully.')
+            return redirect('admin:translation_list')
+    else:
+        form = DirectTranslationForm()
+    return render(request, 'admin/create_translation.html', {'form': form})
+
+@user_passes_test(is_admin)
+def manage_quotes(request):
+    quotes = TranslationRequest.objects.filter(status='QUOTE').order_by('-created_at')
+    return render(request, 'admin/quote_list.html', {'quotes': quotes})
+
+@user_passes_test(is_admin)
+def process_quote(request, pk):
+    quote = get_object_or_404(TranslationRequest, pk=pk, status='QUOTE')
+    if request.method == 'POST':
+        form = QuoteManagementForm(request.POST, instance=quote)
+        if form.is_valid():
+            quote = form.save(commit=False)
+            quote.status = 'QUOTED'
+            quote.save()
+            messages.success(request, 'Quote processed successfully.')
+            return redirect('admin:manage_quotes')
+    else:
+        form = QuoteManagementForm(instance=quote)
+    return render(request, 'admin/process_quote.html', {'form': form, 'quote': quote})
+
+@user_passes_test(is_admin)
+def translation_list(request):
+    translations = TranslationRequest.objects.all().order_by('-created_at')
+    status = request.GET.get('status')
+    if status:
+        translations = translations.filter(status=status)
+    return render(request, 'admin/translation_list.html', {'translations': translations})
+
+@user_passes_test(is_admin)
+def assign_translator(request, pk):
+    translation = get_object_or_404(TranslationRequest, pk=pk)
+    if request.method == 'POST':
+        form = AssignTranslatorForm(request.POST, instance=translation)
+        if form.is_valid():
+            translation = form.save(commit=False)
+            translation.status = 'ASSIGNED'
+            translation.save()
+            messages.success(request, 'Translator assigned successfully.')
+            return redirect('admin:translation_list')
+    else:
+        form = AssignTranslatorForm(instance=translation)
+    return render(request, 'admin/assign_translator.html', 
+                 {'form': form, 'translation': translation})
+
+@user_passes_test(is_admin)
+def payment_management(request):
+    completed_translations = TranslationRequest.objects.filter(
+        status='COMPLETED',
+        is_paid=True
+    ).order_by('-completed_date')
+    
+    pending_payments = TranslationRequest.objects.filter(
+        status='COMPLETED',
+        is_paid=False
+    )
+    
+    context = {
+        'completed_translations': completed_translations,
+        'pending_payments': pending_payments,
+        'total_revenue': completed_translations.aggregate(
+            Sum('client_price'))['client_price__sum'] or 0,
+        'total_cost': completed_translations.aggregate(
+            Sum('translator_price'))['translator_price__sum'] or 0,
+    }
+    return render(request, 'admin/payment_management.html', context)
+
+@user_passes_test(is_admin)
+def reports(request):
+    # Période de rapport
+    period = request.GET.get('period', '30')  # par défaut 30 jours
+    end_date = timezone.now()
+    start_date = end_date - timedelta(days=int(period))
+    
+    # Statistiques générales
+    translations = TranslationRequest.objects.filter(
+        created_at__range=[start_date, end_date]
+    )
+    
+    # Statistiques par langue
+    language_stats = translations.values(
+        'source_language__name', 'target_language__name'
+    ).annotate(
+        count=Count('id'),
+        avg_price=Avg('client_price')
+    )
+    
+    # Statistiques par traducteur
+    translator_stats = translations.values(
+        'translator__username'
+    ).annotate(
+        completed=Count('id', filter={'status': 'COMPLETED'}),
+        avg_rating=Avg('translator__translatorrating__rating')
+    )
+    
+    context = {
+        'period': period,
+        'total_translations': translations.count(),
+        'total_revenue': translations.filter(status='COMPLETED').aggregate(
+            Sum('client_price'))['client_price__sum'] or 0,
+        'avg_completion_time': translations.filter(
+            status='COMPLETED'
+        ).aggregate(
+            avg_time=Avg('completed_date') - Avg('created_at')
+        )['avg_time'],
+        'language_stats': language_stats,
+        'translator_stats': translator_stats,
+    }
+    return render(request, 'admin/reports.html', context)
