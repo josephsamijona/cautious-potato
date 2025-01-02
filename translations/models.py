@@ -168,8 +168,10 @@ class TranslationRequest(models.Model):
     ]
 
     TYPE_CHOICES = [
-        ('REMOTE', 'Remote'),
-        ('ONSITE', 'On Site')
+        ('DOCUMENT', 'Document'),
+        ('LIVE_ON_SITE', 'Live On Site'),
+        ('REMOTE_PHONE', 'Remote Phone'),
+        ('REMOTE_MEETING', 'Remote Meeting')
     ]
 
     # Informations de base
@@ -210,6 +212,7 @@ class TranslationRequest(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.source_language} to {self.target_language})"
+
 
 class TranslatorRating(models.Model):
     translation = models.ForeignKey(TranslationRequest, on_delete=models.CASCADE)
