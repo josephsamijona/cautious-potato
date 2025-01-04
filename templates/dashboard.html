@@ -1,0 +1,287 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .welcome-text {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .logout-form {
+            margin: 0;
+            display: inline;
+        }
+
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        .content {
+            margin: 2rem;
+            padding: 2rem;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        h3 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+        }
+
+        .action-button {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .action-button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background-color: #ffffff;
+        }
+
+        table, th, td {
+            border: 1px solid #dee2e6;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #495057;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 1rem;
+            color: #212529;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .view-link {
+            color: #007bff;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .view-link:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #6c757d;
+            padding: 2rem;
+        }
+
+        .status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background-color: #ffeeba;
+            color: #856404;
+        }
+
+        .status-in-progress {
+            background-color: #b8daff;
+            color: #004085;
+        }
+
+        .status-completed {
+            background-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .status-cancelled {
+            background-color: #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Dashboard</h2>
+        <div class="user-section">
+            <span class="welcome-text">Welcome, {{ request.user.first_name }}!</span>
+            <form method="post" action="{% url 'logout' %}" class="logout-form">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn">Logout</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="content">
+        {% if user.profile.role == 'CLIENT' %}
+            <h3>Your Translation Requests</h3>
+            <a href="#" class="action-button">Create New Request</a>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Deadline</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request in translation_requests %}
+                        <tr>
+                            <td>{{ request.title }}</td>
+                            <td>
+                                <span class="status status-{{ request.status|lower }}">
+                                    {{ request.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ request.deadline }}</td>
+                            <td>
+                                <a href="#" class="view-link">View</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="empty-message">No translation requests found.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif user.profile.role == 'TRANSLATOR' %}
+            <h3>Your Missions</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Deadline</th>
+                        <th>Client</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mission in missions %}
+                        <tr>
+                            <td>{{ mission.title }}</td>
+                            <td>
+                                <span class="status status-{{ mission.status|lower }}">
+                                    {{ mission.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ mission.deadline }}</td>
+                            <td>{{ mission.client.username }}</td>
+                            <td>
+                                <a href="#" class="view-link">View</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="empty-message">No missions assigned.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% elif user.profile.role == 'ADMIN' %}
+            <h3>All Translation Requests</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Client</th>
+                        <th>Status</th>
+                        <th>Deadline</th>
+                        <th>Translator</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request in all_requests %}
+                        <tr>
+                            <td>{{ request.title }}</td>
+                            <td>{{ request.client.username }}</td>
+                            <td>
+                                <span class="status status-{{ request.status|lower }}">
+                                    {{ request.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ request.deadline }}</td>
+                            <td>
+                                {% if request.translator %}
+                                    {{ request.translator.username }}
+                                {% else %}
+                                    <span class="status status-pending">Unassigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="#" class="view-link">View</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="empty-message">No translation requests found.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</body>
+</html>

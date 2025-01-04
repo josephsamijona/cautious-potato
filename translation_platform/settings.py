@@ -23,6 +23,33 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        '': {  # Root logger
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+        },
+    },
+}
 # Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -31,17 +58,20 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.sites",
+    'phonenumber_field',
+    'django_countries',
+    #"django.contrib.sites",
 
     # Third party apps
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
-    'crispy_forms',
+    
     'crispy_tailwind',
     'django_celery_beat',
     'social_django',
-    
+    'crispy_forms',
+    'crispy_bootstrap5', 
     # Local apps
     'translations',
     "mvp",
@@ -129,9 +159,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Crispy Forms
-CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
-CRISPY_TEMPLATE_PACK = "tailwind"
+
 
 # REST Framework
 REST_FRAMEWORK = {
@@ -173,7 +201,7 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # Social Auth Configuration
 AUTHENTICATION_BACKENDS = (
-    
+    'mvp.auth_backends.flexible_auth.FlexibleAuthBackend',
     'django.contrib.auth.backends.ModelBackend',
 )
 
@@ -192,6 +220,12 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_URL = 'logout'
 LOGOUT_REDIRECT_URL = 'home'
+
+PHONENUMBER_DEFAULT_REGION = 'US'  # Pour les États-Unis
+PHONENUMBER_DB_FORMAT = 'INTERNATIONAL'
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = ('bootstrap5',)
+CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 if DEBUG:
     INSTALLED_APPS += ['debug_toolbar']

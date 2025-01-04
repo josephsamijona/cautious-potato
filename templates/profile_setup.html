@@ -1,0 +1,801 @@
+<!-- templates/profile_setup.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Profile Setup - Translation Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <style>
+        .stepper-container {
+            min-height: 100vh;
+            background-color: var(--gray-100);
+            padding: var(--spacing-lg);
+        }
+
+        .stepper-card {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: var(--spacing-xl);
+        }
+
+        .setup-intro {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .setup-intro h2 {
+            color: var(--primary);
+            font-size: 1.75rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .setup-intro p {
+            color: var(--gray-600);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .stepper-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-xl);
+            position: relative;
+        }
+
+        .step-indicator {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background-color: var(--gray-200);
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--spacing-sm);
+            font-weight: 600;
+            position: relative;
+            z-index: 2;
+        }
+
+        .step-title {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .progress-bar {
+            position: absolute;
+            top: 17px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--gray-200);
+            z-index: 1;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--success);
+            width: 0;
+            transition: width 0.3s ease;
+        }
+
+        .step-content {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .step-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--border-radius-md);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+            outline: none;
+        }
+
+        .country-select {
+            height: 48px;
+            background-position: right 10px center;
+        }
+
+        .phone-input-container {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: var(--spacing-sm);
+        }
+
+        .address-section {
+            background-color: var(--gray-50);
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .address-title {
+            font-size: 1.1rem;
+            color: var(--gray-800);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .bank-info-notice {
+            background-color: rgba(74, 144, 226, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            border-radius: var(--border-radius-md);
+        }
+
+        .step-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--spacing-xl);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius-md);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-prev {
+            background-color: var(--gray-200);
+            color: var(--gray-700);
+            border: none;
+        }
+
+        .btn-next, .btn-submit {
+            background-color: var(--primary);
+            color: var(--white);
+            border: none;
+        }
+
+        .summary-section {
+            margin-top: var(--spacing-lg);
+            padding: var(--spacing-lg);
+            background-color: var(--gray-50);
+            border-radius: var(--border-radius-md);
+        }
+
+        .summary-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .summary-group h4 {
+            color: var(--gray-700);
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-xs);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        @media (max-width: 768px) {
+            .stepper-card {
+                padding: var(--spacing-md);
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .step-title {
+                display: none;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* -----------------------------
+           NOUVELLES RÈGLES CSS POUR LES LANGUES
+        ----------------------------- */
+        .languages-section {
+            margin-top: var(--spacing-md);
+        }
+
+        .languages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .language-card {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .language-checkbox {
+            position: absolute;
+            opacity: 0;
+        }
+
+        .language-label {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--white);
+            border: 2px solid var(--gray-200);
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .language-info {
+            flex-grow: 1;
+        }
+
+        .language-name {
+            display: block;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+        }
+
+        .language-code {
+            display: inline-block;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            background-color: var(--gray-100);
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--border-radius-sm);
+        }
+
+        .language-checkbox:checked + .language-label {
+            border-color: var(--primary);
+            background-color: rgba(74, 144, 226, 0.05);
+            box-shadow: 0 2px 4px rgba(74, 144, 226, 0.1);
+        }
+
+        .language-checkbox:checked + .language-label::before {
+            content: '✓';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .language-checkbox:checked + .language-label .language-code {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .language-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="stepper-container">
+        <div class="stepper-card">
+            <div class="setup-intro">
+                <h2>Complete Your Profile</h2>
+                <p>Just a few more details needed! After this setup, you'll be redirected to your personalized dashboard where you can {% if user.profile.role == 'TRANSLATOR' %}start accepting translation jobs{% else %}request translations{% endif %}.</p>
+            </div>
+
+            <!-- Stepper Header -->
+            <div class="stepper-header">
+                <div class="progress-bar">
+                    <div class="progress-bar-fill" id="progressBar"></div>
+                </div>
+                <div class="step-indicator active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Personal Info</div>
+                </div>
+                <div class="step-indicator" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Contact</div>
+                </div>
+                <div class="step-indicator" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Address</div>
+                </div>
+                {% if user.profile.role == 'TRANSLATOR' %}
+                <div class="step-indicator" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Languages</div>
+                </div>
+                <div class="step-indicator" data-step="5">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Bank Info</div>
+                </div>
+                {% endif %}
+                {% if user.profile.role == 'CLIENT' %}
+                <div class="step-indicator" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Company Info</div>
+                </div>
+                {% endif %}
+                <div class="step-indicator" data-step="{% if user.profile.role == 'TRANSLATOR' %}6{% else %}5{% endif %}">
+                    <div class="step-number">✓</div>
+                    <div class="step-title">Review</div>
+                </div>
+            </div>
+
+            <form method="post" id="profileForm">
+                {% csrf_token %}
+
+                <!-- Step 1: Personal Information -->
+                <div class="step-content active" data-step="1">
+                    <h3>Personal Information</h3>
+                    <div class="form-group">
+                        <label for="{{ form.date_of_birth.id_for_label }}">Date of Birth *</label>
+                        {{ form.date_of_birth }}
+                        {% if form.date_of_birth.errors %}
+                            <div class="error-message">{{ form.date_of_birth.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Step 2: Contact Information -->
+                <div class="step-content" data-step="2">
+                    <h3>Contact Details</h3>
+                    <div class="form-group">
+                        <label for="{{ form.country.id_for_label }}">Country *</label>
+                        {{ form.country }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.phone_primary.id_for_label }}">Primary Phone Number *</label>
+                        {{ form.phone_primary }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.phone_secondary.id_for_label }}">Secondary Phone Number (Optional)</label>
+                        {{ form.phone_secondary }}
+                    </div>
+                </div>
+
+                <!-- Step 3: Address Information -->
+                <div class="step-content" data-step="3">
+                    <h3>Address Information</h3>
+                    <div class="address-section">
+                        <div class="form-group">
+                            <label for="{{ form.address_line1.id_for_label }}">Street Address *</label>
+                            {{ form.address_line1 }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.address_line2.id_for_label }}">Apartment, Suite, etc. (optional)</label>
+                            {{ form.address_line2 }}
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="{{ form.city.id_for_label }}">City *</label>
+                                {{ form.city }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.state_province.id_for_label }}">State/Province *</label>
+                                {{ form.state_province }}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.postal_code.id_for_label }}">ZIP/Postal Code *</label>
+                            {{ form.postal_code }}
+                        </div>
+                    </div>
+                </div>
+
+                {% if user.profile.role == 'TRANSLATOR' %}
+                <!-- Step 4: Languages (Translator Only) -->
+                <div class="step-content" data-step="4">
+                    <h3>Translation Languages</h3>
+                    <p class="step-description">Select all languages you're qualified to translate</p>
+                    
+                    <div class="languages-section">
+                        <div class="languages-grid">
+                            {% for language in form.languages.field.queryset %}
+                            <div class="language-card">
+                                <input type="checkbox" 
+                                       id="lang_{{ language.code }}" 
+                                       name="languages" 
+                                       value="{{ language.id }}"
+                                       class="language-checkbox"
+                                       {% if language in form.languages.value %}checked{% endif %}>
+                                <label for="lang_{{ language.code }}" class="language-label">
+                                    <div class="language-info">
+                                        <span class="language-name">{{ language.name }}</span>
+                                        <span class="language-code">{{ language.code }}</span>
+                                    </div>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Bank Information (Translator Only) -->
+                <div class="step-content" data-step="5">
+                    <h3>Banking Information</h3>
+                    <div class="bank-info-notice">
+                        <div class="security-message">
+                            <i class="lock-icon">🔒</i>
+                            <div>
+                                <p class="security-title">Your data is secure</p>
+                                <p class="security-text">Your banking information is encrypted with bank-level security. You can skip this step and add your banking details later from your dashboard.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bank-fields">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="{{ form.bank_name.id_for_label }}">Bank Name</label>
+                                {{ form.bank_name }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.bank_account_name.id_for_label }}">Account Holder Name</label>
+                                {{ form.bank_account_name }}
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="{{ form.bank_account_number.id_for_label }}">Account Number</label>
+                                {{ form.bank_account_number }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.bank_routing_number.id_for_label }}">Routing Number</label>
+                                {{ form.bank_routing_number }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if user.profile.role == 'CLIENT' %}
+                <!-- Step 4: Company Information (Client Only) -->
+                <div class="step-content" data-step="4">
+                    <h3>Company Information</h3>
+                    <div class="form-group">
+                        <label for="{{ form.account_type.id_for_label }}">Account Type *</label>
+                        {{ form.account_type }}
+                    </div>
+                    <div class="form-group company-name-group" style="display: none;">
+                        <label for="{{ form.company_name.id_for_label }}">Company Name *</label>
+                        {{ form.company_name }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Final Step: Review -->
+                <div class="step-content" data-step="{% if user.profile.role == 'TRANSLATOR' %}6{% else %}5{% endif %}">
+                    <h3>Review Your Information</h3>
+                    <div class="summary-section">
+                        <!-- Personal Info -->
+                        <div class="summary-group">
+                            <h4>Personal Details</h4>
+                            <div class="summary-item">
+                                <div class="summary-label">Date of Birth</div>
+                                <div class="summary-value" id="summary-dob"></div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Info -->
+                        <div class="summary-group">
+                            <h4>Contact Information</h4>
+                            <div class="summary-item">
+                                <div class="summary-label">Primary Phone</div>
+                                <div class="summary-value" id="summary-phone1"></div>
+                            </div>
+                            <div class="summary-item" id="summary-phone2-container" style="display: none;">
+                                <div class="summary-label">Secondary Phone</div>
+                                <div class="summary-value" id="summary-phone2"></div>
+                            </div>
+                        </div>
+
+                        <!-- Address -->
+                        <div class="summary-group">
+                            <h4>Address</h4>
+                            <div class="summary-value" id="summary-address"></div>
+                        </div>
+
+                        {% if user.profile.role == 'TRANSLATOR' %}
+                        <!-- Languages -->
+                        <div class="summary-group">
+                            <h4>Languages</h4>
+                            <div class="summary-languages" id="summary-languages"></div>
+                        </div>
+
+                        <!-- Banking Information -->
+                        <div class="summary-group" id="summary-bank-container">
+                            <h4>Banking Information</h4>
+                            <div id="bank-info-status"></div>
+                        </div>
+                        {% endif %}
+
+                        {% if user.profile.role == 'CLIENT' %}
+                        <!-- Company Information -->
+                        <div class="summary-group" id="summary-company-container">
+                            <h4>Company Information</h4>
+                            <div id="company-info-status"></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="step-buttons">
+                    <button type="button" class="btn btn-prev" style="display: none;">Previous</button>
+                    <button type="button" class="btn btn-next">Next</button>
+                    <button type="submit" class="btn btn-submit" style="display: none;">Complete Setup</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('profileForm');
+            const steps = document.querySelectorAll('.step-content');
+            const indicators = document.querySelectorAll('.step-indicator');
+            const progressBar = document.getElementById('progressBar');
+            const prevBtn = document.querySelector('.btn-prev');
+            const nextBtn = document.querySelector('.btn-next');
+            const submitBtn = document.querySelector('.btn-submit');
+            let currentStep = 1;
+            const totalSteps = steps.length;
+
+            // Fonction pour valider le format d'un numéro de téléphone
+            function isValidPhone(phone) {
+                return phone && phone.match(/^\+?[1-9]\d{1,14}$/);
+            }
+
+            // Fonction pour valider une date
+            function isValidDate(date) {
+                return date && !isNaN(new Date(date));
+            }
+
+            // Fonction pour valider les champs requis d'une étape
+            function isStepValid(step) {
+                const currentStepElement = document.querySelector(`.step-content[data-step="${step}"]`);
+                const requiredInputs = currentStepElement.querySelectorAll('input[required], select[required]');
+                let isValid = true;
+
+                // Validation spécifique selon l'étape
+                switch(step) {
+                    case 1: // Personal Information
+                        const dob = document.querySelector('[name="date_of_birth"]').value;
+                        if (!isValidDate(dob)) {
+                            isValid = false;
+                            showError('date_of_birth', 'Please enter a valid date of birth');
+                        }
+                        break;
+
+                    case 2: // Contact Information
+                        const phone = document.querySelector('[name="phone_primary"]').value;
+                        if (!isValidPhone(phone)) {
+                            isValid = false;
+                            showError('phone_primary', 'Please enter a valid phone number');
+                        }
+                        break;
+
+                    case 3: // Address
+                        const requiredAddressFields = ['address_line1', 'city', 'state_province', 'postal_code'];
+                        requiredAddressFields.forEach(field => {
+                            const input = document.querySelector(`[name="${field}"]`);
+                            if (!input.value.trim()) {
+                                isValid = false;
+                                showError(field, 'This field is required');
+                            }
+                        });
+                        break;
+
+                    case 4:
+                        // Pour les traducteurs : validation des langues
+                        if (document.querySelector('.languages-grid')) {
+                            const selectedLanguages = document.querySelectorAll('.language-checkbox:checked');
+                            if (selectedLanguages.length === 0) {
+                                isValid = false;
+                                showError('languages', 'Please select at least one language');
+                            }
+                        }
+                        // Pour les clients : validation du type de compte
+                        if (document.querySelector('[name="account_type"]')) {
+                            const accountType = document.querySelector('[name="account_type"]').value;
+                            const companyName = document.querySelector('[name="company_name"]')?.value;
+                            if (accountType !== 'INDIVIDUAL' && !companyName) {
+                                isValid = false;
+                                showError('company_name', 'Company name is required for this account type');
+                            }
+                        }
+                        break;
+                }
+
+                return isValid;
+            }
+
+            // Fonction pour afficher les erreurs
+            function showError(fieldName, message) {
+                const field = document.querySelector(`[name="${fieldName}"]`);
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = message;
+                
+                // Supprimer les messages d'erreur existants
+                const existingError = field.parentElement.querySelector('.error-message');
+                if (existingError) existingError.remove();
+                
+                field.parentElement.appendChild(errorDiv);
+                field.classList.add('invalid');
+            }
+
+            // Fonction pour mettre à jour l'affichage des étapes
+            function updateStep(step) {
+                // Cacher toutes les étapes
+                steps.forEach(s => s.classList.remove('active'));
+                
+                // Mettre à jour les indicateurs
+                indicators.forEach((indicator, index) => {
+                    if (index < step - 1) {
+                        indicator.classList.add('completed');
+                        indicator.classList.remove('active');
+                    } else if (index === step - 1) {
+                        indicator.classList.add('active');
+                        indicator.classList.remove('completed');
+                    } else {
+                        indicator.classList.remove('completed', 'active');
+                    }
+                });
+
+                // Afficher l'étape actuelle
+                document.querySelector(`.step-content[data-step="${step}"]`).classList.add('active');
+
+                // Mettre à jour la barre de progression
+                const progress = ((step - 1) / (totalSteps - 1)) * 100;
+                progressBar.style.width = `${progress}%`;
+
+                // Gestion des boutons
+                prevBtn.style.display = step === 1 ? 'none' : 'block';
+                if (step === totalSteps) {
+                    nextBtn.style.display = 'none';
+                    submitBtn.style.display = 'block';
+                    updateSummary();
+                } else {
+                    nextBtn.style.display = 'block';
+                    submitBtn.style.display = 'none';
+                }
+
+                currentStep = step;
+            }
+
+            // Fonction pour mettre à jour le résumé
+            function updateSummary() {
+                // Date de naissance
+                document.getElementById('summary-dob').textContent = 
+                    document.querySelector('[name="date_of_birth"]').value;
+
+                // Téléphones
+                const phone1 = document.querySelector('[name="phone_primary"]').value;
+                const phone2 = document.querySelector('[name="phone_secondary"]').value;
+                document.getElementById('summary-phone1').textContent = phone1;
+                
+                if (phone2) {
+                    document.getElementById('summary-phone2').textContent = phone2;
+                    document.getElementById('summary-phone2-container').style.display = 'block';
+                }
+
+                // Adresse
+                const address = [
+                    document.querySelector('[name="address_line1"]').value,
+                    document.querySelector('[name="address_line2"]').value,
+                    document.querySelector('[name="city"]').value,
+                    document.querySelector('[name="state_province"]').value,
+                    document.querySelector('[name="postal_code"]').value,
+                    document.querySelector('[name="country"]').value
+                ].filter(Boolean).join(', ');
+                document.getElementById('summary-address').textContent = address;
+
+                // Pour les traducteurs
+                const languagesContainer = document.getElementById('summary-languages');
+                if (languagesContainer) {
+                    const selectedLanguages = Array.from(document.querySelectorAll('.language-checkbox:checked'))
+                        .map(cb => cb.closest('.language-card').querySelector('.language-name').textContent);
+                    
+                    languagesContainer.innerHTML = selectedLanguages
+                        .map(lang => `<span class="language-tag">${lang}</span>`)
+                        .join('');
+
+                    // Status des informations bancaires
+                    const bankName = document.querySelector('[name="bank_name"]')?.value;
+                    const bankInfoStatus = document.getElementById('bank-info-status');
+                    if (bankInfoStatus) {
+                        bankInfoStatus.innerHTML = bankName ? 
+                            '<p class="success-text">Banking information provided</p>' : 
+                            '<p class="pending-text">Banking information will be provided later</p>';
+                    }
+                }
+
+                // Pour les clients
+                const companyContainer = document.getElementById('company-info-status');
+                if (companyContainer) {
+                    const accountType = document.querySelector('[name="account_type"]').value;
+                    const companyName = document.querySelector('[name="company_name"]')?.value;
+                    companyContainer.innerHTML = `
+                        <div class="summary-item">
+                            <div class="summary-label">Account Type</div>
+                            <div class="summary-value">${accountType}</div>
+                        </div>
+                        ${companyName ? `
+                        <div class="summary-item">
+                            <div class="summary-label">Company Name</div>
+                            <div class="summary-value">${companyName}</div>
+                        </div>
+                        ` : ''}
+                    `;
+                }
+            }
+
+            // Event Listeners
+            nextBtn.addEventListener('click', () => {
+                if (isStepValid(currentStep) && currentStep < totalSteps) {
+                    updateStep(currentStep + 1);
+                }
+            });
+
+            prevBtn.addEventListener('click', () => {
+                if (currentStep > 1) {
+                    updateStep(currentStep - 1);
+                }
+            });
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (isStepValid(currentStep)) {
+                    form.submit();
+                }
+            });
+
+            // Gestion du type de compte pour les clients
+            const accountTypeSelect = document.querySelector('[name="account_type"]');
+            if (accountTypeSelect) {
+                const companyNameGroup = document.querySelector('.company-name-group');
+                accountTypeSelect.addEventListener('change', function() {
+                    companyNameGroup.style.display = 
+                        this.value !== 'INDIVIDUAL' ? 'block' : 'none';
+                });
+            }
+
+            // Initialisation
+            updateStep(1);
+        });
+    </script>
+</body>
+</html>

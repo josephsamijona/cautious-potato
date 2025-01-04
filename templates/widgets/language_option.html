@@ -1,0 +1,12 @@
+<!-- templates/widgets/language_option.html -->
+<div class="language-option">
+    <input type="checkbox" 
+           name="{{ widget.name }}" 
+           value="{{ widget.value }}"
+           id="language_{{ widget.value }}"
+           {% if widget.value in widget.attrs.selected_values %}checked{% endif %}
+           class="language-checkbox">
+    <label for="language_{{ widget.value }}" class="language-label">
+        {{ widget.label }}
+    </label>
+</div>

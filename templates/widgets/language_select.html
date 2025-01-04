@@ -1,0 +1,8 @@
+<!-- templates/widgets/language_select.html -->
+<div class="language-grid">
+    {% for group, options, index in widget.optgroups %}
+        {% for option in options %}
+            {% include option.template_name with widget=option %}
+        {% endfor %}
+    {% endfor %}
+</div>

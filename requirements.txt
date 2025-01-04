@@ -6,7 +6,8 @@ dj-database-url
 python-dotenv
 django-phonenumber-field[phonenumbers]
 django-countries
-
+django-crispy-forms
+crispy-bootstrap5
 # Authentification & Sécurité
 djangorestframework-simplejwt 
 django-cors-headers 

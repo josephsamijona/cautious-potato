@@ -58,8 +58,7 @@ class UserProfile(models.Model):
     bank_account_name = models.CharField(max_length=200, blank=True)
     bank_account_number = models.CharField(max_length=200, blank=True)
     bank_routing_number = models.CharField(max_length=200, blank=True)
-    bank_swift_code = models.CharField(max_length=50, blank=True)
-    bank_iban = models.CharField(max_length=50, blank=True)
+
     # Type de compte
     account_type = models.CharField(max_length=20, default='INDIVIDUAL', 
         choices=[
@@ -74,9 +73,8 @@ class UserProfile(models.Model):
         choices=[
             ('CHECKING', 'Checking Account'),
             ('SAVINGS', 'Savings Account'),
-            ('BUSINESS', 'Business Account'),
-            ('CURRENT', 'Current Account'),
-            ('IBAN', 'IBAN Account')
+
+
         ])
     
     # Évaluation (pour les traducteurs)
@@ -177,8 +175,12 @@ class TranslationRequest(models.Model):
     # Informations de base
     title = models.CharField(max_length=200)
     description = models.TextField()
-    source_language = models.ForeignKey(Language, related_name='source_translations', on_delete=models.PROTECT)
-    target_language = models.ForeignKey(Language, related_name='target_translations', on_delete=models.PROTECT)
+    source_language = models.ForeignKey(
+        'Language', related_name='source_translations', on_delete=models.PROTECT
+    )
+    target_language = models.ForeignKey(
+        'Language', related_name='target_translations', on_delete=models.PROTECT
+    )
     
     # Dates
     created_at = models.DateTimeField(auto_now_add=True)
@@ -188,23 +190,35 @@ class TranslationRequest(models.Model):
     completed_date = models.DateTimeField(null=True, blank=True)
 
     # Documents
-    original_document = models.FileField(upload_to='original_documents/')
-    translated_document = models.FileField(upload_to='translated_documents/', blank=True)
+    original_document = models.FileField(upload_to='original_documents/', blank=True, null=True)
+    translated_document = models.FileField(upload_to='translated_documents/', blank=True, null=True)
     
     # Prix et paiement
-    client_price = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    translator_price = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    client_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    translator_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_paid = models.BooleanField(default=False)
     stripe_payment_id = models.CharField(max_length=100, blank=True)
-    
+
     # Type et localisation
     translation_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-    address = models.TextField(blank=True, null=True)
-    
+    address = models.TextField(blank=True, null=True)  # Utilisé pour "LIVE_ON_SITE"
+
+    # Détails pour les interprétations
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True, help_text="Durée estimée en minutes")
+    meeting_link = models.URLField(blank=True, null=True, help_text="Lien pour les réunions distantes")
+    phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Numéro pour les appels téléphoniques")
+    additional_context = models.JSONField(blank=True, null=True, help_text="Métadonnées spécifiques au contexte")
+
     # Relations
-    client = models.ForeignKey(User, related_name='client_requests', on_delete=models.PROTECT)
-    translator = models.ForeignKey(User, related_name='translator_requests', null=True, blank=True, on_delete=models.SET_NULL)
-    assigned_by = models.ForeignKey(User, related_name='assigned_translations', null=True, blank=True, on_delete=models.SET_NULL)
+    client = models.ForeignKey(
+        User, related_name='client_requests', on_delete=models.PROTECT, blank=True, null=True
+    )
+    translator = models.ForeignKey(
+        User, related_name='translator_requests', null=True, blank=True, on_delete=models.SET_NULL
+    )
+    assigned_by = models.ForeignKey(
+        User, related_name='assigned_translations', null=True, blank=True, on_delete=models.SET_NULL
+    )
     
     # Statut
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='QUOTE')
@@ -212,6 +226,10 @@ class TranslationRequest(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.source_language} to {self.target_language})"
+
+    def is_live_interpretation(self):
+        return self.translation_type in ['LIVE_ON_SITE', 'REMOTE_PHONE', 'REMOTE_MEETING']
+
 
 
 class TranslatorRating(models.Model):
@@ -228,7 +246,7 @@ class TranslatorRating(models.Model):
 # Tables pour la vérification et la sécurité
 class EmailVerification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    token = models.UUIDField(default=uuid.uuid4, editable=False)
+    token = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_used = models.BooleanField(default=False)
@@ -238,7 +256,7 @@ class EmailVerification(models.Model):
 
 class PasswordReset(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    token = models.UUIDField(default=uuid.uuid4, editable=False)
+    token = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_used = models.BooleanField(default=False)

@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Translation Services{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'img/logo.png' %}">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            @apply bg-gray-50 text-gray-800;
+        }
+        
+        .nav-link {
+            @apply text-gray-600 hover:text-blue-600 transition-colors duration-300;
+        }
+        
+        .btn-primary {
+            @apply bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-300 rounded-lg px-4 py-2;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Navigation -->
+    <header class="bg-white shadow-md">
+        <nav class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <!-- Logo -->
+            <div class="flex items-center">
+                <img src="{% static 'img/logo.png' %}" alt="Translation Services Logo" class="h-10 mr-4">
+                <span class="text-xl font-bold text-blue-600">TranslateHub</span>
+            </div>
+            
+            <!-- Navigation Links -->
+            <ul class="flex space-x-6">
+                <li><a href="#" class="nav-link">Home</a></li>
+                <li><a href="#" class="nav-link">Request Quote</a></li>
+                <li><a href="#" class="nav-link">Services</a></li>
+                <li><a href="#" class="nav-link">Contact</a></li>
+            </ul>
+            
+            <!-- User Actions -->
+            <div class="flex items-center space-x-4">
+                {% if user.is_authenticated %}
+                    <div class="relative group">
+                        <button class="flex items-center space-x-2">
+                            <img src="{% static 'img/logo.png' %}" 
+                                 alt="Profile" class="h-8 w-8 rounded-full">
+                            <span>{{ user.username }}</span>
+                            <i class="fas fa-chevron-down text-sm"></i>
+                        </button>
+                        <div class="absolute hidden group-hover:block bg-white shadow-lg rounded-lg mt-2 py-2 w-48 right-0 z-20">
+                            <a href="#" class="block px-4 py-2 hover:bg-gray-100">My Profile</a>
+                            <a href="#" class="block px-4 py-2 hover:bg-gray-100">My Quotes</a>
+                            <a href="{% url 'logout' %}" class="block px-4 py-2 hover:bg-gray-100 text-red-500">Logout</a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn-primary">Login</a>
+                    <a href="{% url 'register' %}" class="text-blue-600 hover:underline">Register</a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                    <div class="p-4 rounded-lg 
+                        {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
+                        {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}
+                        {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
+                        {% if message.tags == 'info' %}bg-blue-100 text-blue-800{% endif %}
+                    ">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4 grid md:grid-cols-3 gap-8">
+            <!-- Company Info -->
+            <div>
+                <h3 class="text-xl font-bold mb-4">TranslateHub</h3>
+                <p class="text-gray-400">Professional translation services across multiple languages and domains.</p>
+            </div>
+            
+            <!-- Quick Links -->
+            <div>
+                <h4 class="font-semibold mb-4">Quick Links</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-blue-400">Home</a></li>
+                    <li><a href="#" class="hover:text-blue-400">Services</a></li>
+                    <li><a href="#" class="hover:text-blue-400">Pricing</a></li>
+                    <li><a href="#" class="hover:text-blue-400">Contact</a></li>
+                </ul>
+            </div>
+            
+            <!-- Contact Info -->
+            <div>
+                <h4 class="font-semibold mb-4">Contact Us</h4>
+                <p><i class="fas fa-envelope mr-2"></i> support@translatehub.com</p>
+                <p><i class="fas fa-phone mr-2"></i> +1 (555) 123-4567</p>
+                <div class="mt-4 flex space-x-4">
+                    <a href="#" class="text-white hover:text-blue-400"><i class="fab fa-facebook text-2xl"></i></a>
+                    <a href="#" class="text-white hover:text-blue-400"><i class="fab fa-twitter text-2xl"></i></a>
+                    <a href="#" class="text-white hover:text-blue-400"><i class="fab fa-linkedin text-2xl"></i></a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Copyright -->
+        <div class="text-center text-gray-500 mt-8 border-t border-gray-700 pt-4">
+            © {{ current_year }} DBD I&T. All Rights Reserved.
+        </div>
+    </footer>
+
+    <!-- Optional JavaScript -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
