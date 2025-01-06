@@ -1,5 +1,6 @@
 {% extends 'basequote.html' %}
 {% block content %}
+{% csrf_token %}
 <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
     <div class="bg-white shadow rounded-lg">
         <div class="px-4 py-5 sm:p-6">
@@ -89,7 +90,6 @@
         </div>
     </div>
 </div>
-
 <!-- Quote Details Modal -->
 <div id="quoteModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen">
@@ -118,7 +118,10 @@
 
 {% block extra_js %}
 <script>
+let currentQuoteId = null;
+
 function viewQuoteDetails(quoteId) {
+    currentQuoteId = quoteId;
     fetch(`/quotes/${quoteId}/`)
         .then(response => response.json())
         .then(data => {
@@ -138,10 +141,33 @@ function viewQuoteDetails(quoteId) {
                     <div>
                         <h4 class="text-sm font-medium text-gray-500">Languages</h4>
                         <p class="mt-1">${data.source_language} → ${data.target_language}</p>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500">Price</h4>
+                        <p class="mt-1">${data.client_price ? '$' + data.client_price : 'Pending'}</p>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500">Deadline</h4>
+                        <p class="mt-1">${new Date(data.deadline).toLocaleDateString()}</p>
                     </div>`;
 
-            // Add type-specific fields
-            if (data.quote_type === 'Remote Phone') {
+            // Ajouter la durée pour les types non-Document
+            if (data.quote_type !== 'Document' && data.duration_minutes) {
+                content += `
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500">Duration</h4>
+                        <p class="mt-1">${data.duration_minutes} minutes</p>
+                    </div>`;
+            }
+
+            // Ajout des champs spécifiques selon le type
+            if (data.quote_type === 'Live On Site' && data.address) {
+                content += `
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500">Address</h4>
+                        <p class="mt-1">${data.address}</p>
+                    </div>`;
+            } else if (data.quote_type === 'Remote Phone') {
                 content += `
                     <div>
                         <h4 class="text-sm font-medium text-gray-500">Phone Number</h4>
@@ -157,6 +183,15 @@ function viewQuoteDetails(quoteId) {
                     </div>`;
             }
 
+            // Ajout du bouton de téléchargement (toujours présent dans le popup)
+            content += `
+                <div class="mt-6 flex justify-end">
+                    <a href="/quotes/${quoteId}/invoice/" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Download Invoice
+                    </a>
+                </div>`;
+
             content += `</div>`;
             detailsContainer.innerHTML = content;
             
@@ -170,9 +205,12 @@ function viewQuoteDetails(quoteId) {
 
 function closeQuoteModal() {
     document.getElementById('quoteModal').classList.add('hidden');
+    currentQuoteId = null;
 }
 
-function saveQuoteChanges(quoteId) {
+function saveQuoteChanges() {
+    if (!currentQuoteId) return;
+    
     const phoneNumber = document.getElementById('phoneNumber')?.value;
     const meetingLink = document.getElementById('meetingLink')?.value;
     
@@ -180,16 +218,27 @@ function saveQuoteChanges(quoteId) {
     if (phoneNumber) data.append('phone_number', phoneNumber);
     if (meetingLink) data.append('meeting_link', meetingLink);
     
-    fetch(`/quotes/${quoteId}/`, {
+    // Obtenir le token CSRF
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch(`/quotes/${currentQuoteId}/`, {
         method: 'POST',
-        body: data
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
+        body: data,
+        credentials: 'same-origin'
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             closeQuoteModal();
-            // Optionally refresh the page or show success message
+            location.reload();
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while saving changes.');
     });
 }
 </script>

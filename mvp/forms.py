@@ -1,5 +1,7 @@
 # forms.py
 from django import forms
+from django.utils import timezone
+
 from django.contrib.auth.password_validation import validate_password
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
@@ -599,3 +601,211 @@ class QuoteRequestForm(forms.ModelForm):  # Changé de QuoteClientRequestForm à
         if translation_type in ['REMOTE_PHONE', 'REMOTE_MEETING', 'LIVE_ON_SITE']:
             return deadline
         return deadline
+    
+    
+####################
+class TranslationAcceptanceForm(forms.ModelForm):
+    accept_terms = forms.BooleanField(
+        required=True,
+        label="Terms and Conditions",
+        help_text="I accept the general terms and conditions of this assignment"
+    )
+    
+    estimated_work_hours = forms.IntegerField(
+        min_value=1,
+        max_value=168,  # 1 week in hours
+        label="Estimated Hours",
+        help_text="Estimated number of hours needed to complete the translation"
+    )
+    
+    confirm_availability = forms.BooleanField(
+        required=True,
+        label="Availability",
+        help_text="I confirm my availability for the entire project duration"
+    )
+
+    class Meta:
+        model = TranslationRequest
+        fields = ['estimated_work_hours', 'notes']
+        
+    def clean(self):
+        cleaned_data = super().clean()
+        current_translation = self.instance
+        
+        # Validate language skills
+        has_verified_language = TranslatorLanguage.objects.filter(
+            translator=self.instance.translator,
+            language=current_translation.target_language,
+            is_verified=True
+        ).exists()
+        
+        if not has_verified_language:
+            raise ValidationError(
+                "You don't have verified language skills for this translation"
+            )
+        
+        return cleaned_data
+
+class TranslationUploadForm(forms.ModelForm):
+    translated_file = forms.FileField(
+        validators=[FileExtensionValidator(
+            allowed_extensions=['pdf', 'doc', 'docx', 'txt', 'odt']
+        )],
+        label="Translated Document",
+        help_text="Accepted formats: PDF, DOC, DOCX, TXT, ODT (max 20MB)"
+    )
+    
+    quality_verified = forms.BooleanField(
+        required=True,
+        label="Quality Check",
+        help_text="I confirm that I have reviewed and verified the translation quality"
+    )
+    
+    translation_notes = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 4}),
+        required=False,
+        label="Review Notes",
+        help_text="Add comments about your review process"
+    )
+    
+    class Meta:
+        model = TranslationRequest
+        fields = ['translated_file', 'translation_notes']
+        
+    def clean_translated_file(self):
+        file = self.cleaned_data.get('translated_file')
+        if file:
+            # Check file size (20MB limit)
+            if file.size > 20 * 1024 * 1024:
+                raise ValidationError("File size must not exceed 20MB")
+                
+            # Validate filename length
+            if len(file.name) > 100:
+                raise ValidationError("File name is too long")
+                
+        return file
+
+class TranslatorScheduleForm(forms.Form):
+    availability_start = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label="Start Date",
+        help_text="Start date of availability"
+    )
+    
+    availability_end = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label="End Date",
+        help_text="End date of availability"
+    )
+    
+    working_hours = forms.MultipleChoiceField(
+        choices=[
+            ('morning', '8:00 AM - 12:00 PM'),
+            ('afternoon', '2:00 PM - 6:00 PM'),
+            ('evening', '6:00 PM - 10:00 PM')
+        ],
+        widget=forms.CheckboxSelectMultiple,
+        label="Available Hours",
+        help_text="Select your available time slots"
+    )
+    
+    max_projects = forms.IntegerField(
+        min_value=1,
+        max_value=5,
+        initial=1,
+        label="Concurrent Projects",
+        help_text="Maximum number of concurrent projects accepted"
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('availability_start')
+        end_date = cleaned_data.get('availability_end')
+        
+        if start_date and end_date:
+            if start_date < timezone.now().date():
+                raise ValidationError(
+                    "Start date cannot be in the past"
+                )
+                
+            if end_date <= start_date:
+                raise ValidationError(
+                    "End date must be after start date"
+                )
+                
+        return cleaned_data
+
+class TranslationStatusForm(forms.ModelForm):
+    completion_percentage = forms.IntegerField(
+        min_value=0,
+        max_value=100,
+        label="Progress",
+        help_text="Translation completion percentage"
+    )
+    
+    work_status = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3}),
+        required=False,
+        label="Status Update",
+        help_text="Add a comment about the current progress"
+    )
+    
+    has_issues = forms.BooleanField(
+        required=False,
+        label="Issues Encountered",
+        help_text="Check if you're experiencing difficulties requiring assistance"
+    )
+    
+    class Meta:
+        model = TranslationRequest
+        fields = ['completion_percentage', 'work_status', 'notes']
+        
+    def clean_completion_percentage(self):
+        new_progress = self.cleaned_data.get('completion_percentage')
+        current_progress = self.instance.completion_percentage
+        
+        if new_progress < current_progress:
+            raise ValidationError(
+                "Completion percentage cannot be lower than the current value"
+            )
+            
+        return new_progress
+
+class TranslatorAvailabilityUpdateForm(forms.ModelForm):
+    unavailable_dates = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=False,
+        help_text="Dates when translator is not available"
+    )
+    
+    daily_work_limit = forms.IntegerField(
+        min_value=1,
+        max_value=12,
+        initial=8,
+        label="Daily Work Hours",
+        help_text="Maximum number of work hours per day"
+    )
+    
+    preferred_work_categories = forms.MultipleChoiceField(
+        choices=[
+            ('technical', 'Technical Documentation'),
+            ('legal', 'Legal Documents'),
+            ('medical', 'Medical Content'),
+            ('marketing', 'Marketing Material'),
+            ('general', 'General Content')
+        ],
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Preferred Categories",
+        help_text="Select your preferred types of translation work"
+    )
+    
+    class Meta:
+        model = TranslatorLanguage
+        fields = ['unavailable_dates', 'daily_work_limit', 'preferred_work_categories']
+        
+    def clean_daily_work_limit(self):
+        hours = self.cleaned_data.get('daily_work_limit')
+        if hours > 12:
+            raise ValidationError("Daily work hours cannot exceed 12 hours")
+        return hours

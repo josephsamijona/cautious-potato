@@ -28,5 +28,36 @@ urlpatterns = [
 
     # URL pour générer et télécharger la facture
     path('quotes/<int:id>/invoice/', views.generate_and_send_invoice, name='generate_invoice'),
-    # Ajoutez d'autres URLs ici
+    # translation
+        path('translations/', views.translation_list, name='translation_list'),
+    
+    # AJAX actions for translations
+    path('translations/<int:translation_id>/accept/', 
+        views.accept_translation, 
+        name='accept_translation'),
+    
+    path('translations/<int:translation_id>/decline/', 
+        views.decline_translation, 
+        name='decline_translation'),
+    
+    path('translations/<int:translation_id>/start/', 
+        views.start_translation, 
+        name='start_translation'),
+    
+    path('translations/<int:translation_id>/complete/', 
+        views.complete_translation, 
+        name='complete_translation'),
+    
+    # Calendar related URLs
+    path('calendar/', 
+        views.translator_calendar, 
+        name='calendar'),
+    
+    path('calendar/events/', 
+        views.get_calendar_events, 
+        name='calendar_events'),
+    
+    path('calendar/upcoming-meetings/', 
+        views.get_upcoming_meetings, 
+        name='upcoming_meetings'),
 ]

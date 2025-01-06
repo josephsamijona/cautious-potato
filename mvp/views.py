@@ -3,6 +3,7 @@
 from django.http import JsonResponse
 import logging
 from django.core.mail import EmailMessage
+from django.views.decorators.http import require_http_methods
 from django.http import HttpResponse
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, redirect, get_object_or_404
@@ -15,10 +16,13 @@ from django.urls import reverse_lazy, reverse
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
+from django.views.decorators.csrf import ensure_csrf_cookie
+import json
 from .forms import (
     RegistrationForm,
     OTPVerificationForm,
@@ -26,7 +30,7 @@ from .forms import (
     ClientProfileForm,
     TranslatorProfileForm,
     PasswordResetRequestForm,
-    PasswordResetForm
+    PasswordResetForm,TranslationAcceptanceForm, TranslationStatusForm, TranslationUploadForm
 )
 from .forms import QuoteRequestForm
 from translations.models import TranslatorLanguage,Notification
@@ -139,7 +143,7 @@ class CustomLoginView(LoginView):
             elif user.profile.role == 'CLIENT':
                 return reverse_lazy('create_quote')
             elif user.profile.role == 'TRANSLATOR':
-                return reverse_lazy('create_quote')
+                return reverse_lazy('translation_list')
         
         return reverse_lazy('dashboard')
 
@@ -159,6 +163,16 @@ def profile_setup_view(request):
     
     logger.info(f"User role: {profile.role}")
 
+    # Define dashboard redirects based on role
+    def get_dashboard_url(role):
+        if role == 'CLIENT':
+            return 'create_quote'
+        elif role == 'TRANSLATOR':
+            return 'translation_list'
+        elif role == 'ADMIN':
+            return 'admin:index'
+        return 'dashboard'  # fallback
+
     if profile.role == 'CLIENT':
         FormClass = ClientProfileForm
         logger.info("Using ClientProfileForm")
@@ -168,7 +182,7 @@ def profile_setup_view(request):
     else:
         logger.error(f"Invalid role detected: {profile.role}")
         messages.error(request, 'Invalid user role')
-        return redirect('dashboard')
+        return redirect(get_dashboard_url(profile.role))
 
     if request.method == 'POST':
         logger.info("Processing POST request")
@@ -198,8 +212,11 @@ def profile_setup_view(request):
                 logger.info("Profile saved successfully")
                 
                 messages.success(request, 'Profile setup completed successfully.')
-                logger.info(f"Redirecting user {user.username} to dashboard")
-                return redirect('dashboard')
+                
+                # Redirect to role-specific dashboard
+                dashboard_url = get_dashboard_url(profile.role)
+                logger.info(f"Redirecting user {user.username} to {dashboard_url}")
+                return redirect(dashboard_url)
                 
             except Exception as e:
                 logger.error(f"Error saving profile: {str(e)}", exc_info=True)
@@ -697,7 +714,9 @@ def generate_and_send_invoice(request, id):
     translation_type = quote.get_translation_type_display()
     translation_source = quote.source_language.name
     translation_target = quote.target_language.name
-    translation_price = quote.client_price
+    
+    # Gestion du prix avec valeur par défaut si None
+    translation_price = quote.client_price if quote.client_price is not None else 0.00
 
     # Générer le PDF
     doc = SimpleDocTemplate(pdf_path, pagesize=letter)
@@ -713,9 +732,11 @@ def generate_and_send_invoice(request, id):
     elements.append(Table([['Bill To:', client_name, client_email]], 
                          colWidths=[1 * inch, 2.5 * inch, 2 * inch]))
 
-    # Détails de la traduction
+    # Détails de la traduction avec gestion du prix
+    price_display = f'${translation_price:.2f}' if translation_price is not None else 'Pending'
     data = [['Service', 'Description', 'Amount'], 
-            [translation_type, translation_title, f'${translation_price:.2f}']]
+            [translation_type, translation_title, price_display]]
+            
     table = Table(data, colWidths=[2 * inch, 3 * inch, 1 * inch])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.grey),
@@ -755,3 +776,377 @@ def generate_and_send_invoice(request, id):
     os.remove(pdf_path)
     
     return response
+
+########traduction####################################################################33333
+
+
+def translator_required(view_func):
+    """Custom decorator to check if user is a translator"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.profile.role == 'TRANSLATOR':
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Access denied. Translator privileges required.'
+            }, status=403)
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+@login_required
+@translator_required
+def translation_list(request):
+    """Main view for listing all translations"""
+    # Get verified languages for the translator
+    verified_languages = TranslatorLanguage.objects.filter(
+        translator=request.user.profile,
+        is_verified=True
+    ).values_list('language', flat=True)
+    
+    # Available translations
+    available_translations = TranslationRequest.objects.filter(
+        status='PAID',
+        translator__isnull=True,
+        target_language__in=verified_languages
+    ).select_related(
+        'client',
+        'source_language',
+        'target_language'
+    )
+    
+    # Assigned translations
+    assigned_translations = TranslationRequest.objects.filter(
+        translator=request.user,
+        status__in=['ASSIGNED', 'IN_PROGRESS']
+    ).select_related(
+        'client',
+        'source_language',
+        'target_language'
+    )
+    
+    # Completed translations
+    completed_translations = TranslationRequest.objects.filter(
+        translator=request.user,
+        status='COMPLETED'
+    ).select_related(
+        'client',
+        'source_language',
+        'target_language'
+    )
+    
+    context = {
+        'available_translations': available_translations,
+        'assigned_translations': assigned_translations,
+        'completed_translations': completed_translations
+    }
+    
+    return render(request, 'translator/translation_list.html', context)
+
+@login_required
+@translator_required
+@require_http_methods(["POST"])
+def accept_translation(request, translation_id):
+    """AJAX endpoint for accepting a translation"""
+    try:
+        translation = get_object_or_404(
+            TranslationRequest,
+            id=translation_id,
+            status='PAID',
+            translator__isnull=True
+        )
+        
+        data = json.loads(request.body)
+        notes = data.get('notes', '')
+        
+        # Update translation
+        translation.translator = request.user
+        translation.status = 'ASSIGNED'
+        translation.start_date = timezone.now()
+        if notes:
+            translation.notes = notes
+        translation.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Translation successfully accepted.',
+            'translation': {
+                'id': translation.id,
+                'title': translation.title,
+                'status': 'ASSIGNED',
+                'start_date': translation.start_date.strftime('%Y-%m-%d %H:%M')
+            }
+        })
+            
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+@login_required
+@translator_required
+@require_http_methods(["POST"])
+def decline_translation(request, translation_id):
+    """AJAX endpoint for declining a translation"""
+    try:
+        translation = get_object_or_404(
+            TranslationRequest,
+            id=translation_id,
+            status='PAID',
+            translator__isnull=True
+        )
+        
+        data = json.loads(request.body)
+        notes = data.get('notes', '')
+        
+        translation.status = 'REJECTED'
+        if notes:
+            translation.notes = notes
+        translation.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Translation request declined.',
+            'translation_id': translation.id
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+@login_required
+@translator_required
+@require_http_methods(["POST"])
+def start_translation(request, translation_id):
+    """AJAX endpoint for starting a translation"""
+    try:
+        translation = get_object_or_404(
+            TranslationRequest,
+            id=translation_id,
+            translator=request.user,
+            status='ASSIGNED'
+        )
+        
+        translation.status = 'IN_PROGRESS'
+        translation.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Translation started.',
+            'translation': {
+                'id': translation.id,
+                'status': 'IN_PROGRESS'
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+@login_required
+@translator_required
+@require_http_methods(["POST"])
+def complete_translation(request, translation_id):
+    """AJAX endpoint for completing a translation"""
+    try:
+        translation = get_object_or_404(
+            TranslationRequest,
+            id=translation_id,
+            translator=request.user,
+            status='IN_PROGRESS'
+        )
+        
+        # Handle file upload if provided
+        if request.FILES.get('translated_document'):
+            translation.translated_document = request.FILES['translated_document']
+            
+        # Get notes if provided
+        data = json.loads(request.body)
+        notes = data.get('notes', '')
+        if notes:
+            translation.notes = notes
+            
+        translation.status = 'COMPLETED'
+        translation.completed_date = timezone.now()
+        translation.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Translation marked as complete.',
+            'translation': {
+                'id': translation.id,
+                'status': 'COMPLETED',
+                'completed_date': translation.completed_date.strftime('%Y-%m-%d %H:%M')
+            }
+        })
+            
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+        
+        
+@login_required
+@translator_required
+def translator_calendar(request):
+    """View for the calendar page"""
+    return render(request, 'translator/calendar.html')
+
+@login_required
+@translator_required
+def get_calendar_events(request):
+    """AJAX endpoint to get calendar events"""
+    try:
+        # Get current date and date range
+        today = timezone.now()
+        start_date = today - timedelta(days=7)  # Show past week
+        end_date = today + timedelta(days=30)   # Show next month
+        
+        # Get all active translations for this translator
+        translations = TranslationRequest.objects.filter(
+            translator=request.user,
+            deadline__gte=start_date,
+            deadline__lte=end_date,
+            status__in=['ASSIGNED', 'IN_PROGRESS']
+        ).select_related(
+            'source_language',
+            'target_language'
+        )
+
+        # Process meetings separately (they need special handling)
+        meetings = translations.filter(
+            translation_type__in=['LIVE_ON_SITE', 'REMOTE_PHONE', 'REMOTE_MEETING']
+        )
+
+        # Process regular translations
+        regular_translations = translations.filter(
+            translation_type='DOCUMENT'
+        )
+
+        events = []
+
+        # Add meetings to calendar (they get priority - will be shown on top)
+        for meeting in meetings:
+            event_color = get_meeting_color(meeting)
+            events.append({
+                'id': f'meeting_{meeting.id}',
+                'title': f'🔴 {meeting.title}',
+                'start': meeting.start_date.isoformat() if meeting.start_date else meeting.deadline.isoformat(),
+                'end': get_meeting_end_time(meeting),
+                'color': event_color,
+                'url': f'/translations/{meeting.id}/',
+                'extendedProps': {
+                    'type': meeting.translation_type,
+                    'status': meeting.status,
+                    'languages': f'{meeting.source_language.code} → {meeting.target_language.code}',
+                    'location': get_meeting_location(meeting),
+                    'priority': 'high' if is_urgent_meeting(meeting) else 'normal'
+                }
+            })
+
+        # Add regular translations
+        for translation in regular_translations:
+            event_color = get_translation_color(translation)
+            events.append({
+                'id': f'translation_{translation.id}',
+                'title': translation.title,
+                'start': translation.start_date.isoformat() if translation.start_date else translation.deadline.isoformat(),
+                'end': translation.deadline.isoformat(),
+                'color': event_color,
+                'url': f'/translations/{translation.id}/',
+                'extendedProps': {
+                    'type': 'DOCUMENT',
+                    'status': translation.status,
+                    'languages': f'{translation.source_language.code} → {translation.target_language.code}',
+                    'priority': 'normal'
+                }
+            })
+
+        return JsonResponse({
+            'status': 'success',
+            'events': events
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+def is_urgent_meeting(meeting):
+    """Check if meeting is happening soon (within 24 hours)"""
+    if meeting.start_date:
+        time_until_meeting = meeting.start_date - timezone.now()
+        return time_until_meeting <= timedelta(hours=24)
+    return False
+
+def get_meeting_location(meeting):
+    """Get formatted location based on meeting type"""
+    if meeting.translation_type == 'LIVE_ON_SITE':
+        return f"On-site: {meeting.address}"
+    elif meeting.translation_type == 'REMOTE_PHONE':
+        return f"Phone: {meeting.phone_number}"
+    elif meeting.translation_type == 'REMOTE_MEETING':
+        return f"Online: {meeting.meeting_link}"
+    return "Location not specified"
+
+def get_meeting_end_time(meeting):
+    """Calculate meeting end time based on duration"""
+    if meeting.start_date and meeting.duration_minutes:
+        return (meeting.start_date + timedelta(minutes=meeting.duration_minutes)).isoformat()
+    return meeting.deadline.isoformat()
+
+def get_meeting_color(meeting):
+    """Define colors for different meeting states"""
+    if is_urgent_meeting(meeting):
+        return '#FF4444'  # Red for urgent meetings
+    if meeting.status == 'IN_PROGRESS':
+        return '#4CAF50'  # Green for ongoing
+    return '#2196F3'  # Blue for normal meetings
+
+def get_translation_color(translation):
+    """Define colors for different translation states"""
+    if translation.status == 'IN_PROGRESS':
+        return '#4CAF50'  # Green
+    return '#9E9E9E'  # Grey for assigned
+
+@login_required
+@translator_required
+def get_upcoming_meetings(request):
+    """AJAX endpoint to get list of upcoming meetings"""
+    try:
+        today = timezone.now()
+        upcoming_meetings = TranslationRequest.objects.filter(
+            translator=request.user,
+            translation_type__in=['LIVE_ON_SITE', 'REMOTE_PHONE', 'REMOTE_MEETING'],
+            status__in=['ASSIGNED', 'IN_PROGRESS'],
+            start_date__gte=today,
+            start_date__lte=today + timedelta(days=7)
+        ).order_by('start_date')
+
+        meetings_data = []
+        for meeting in upcoming_meetings:
+            meetings_data.append({
+                'id': meeting.id,
+                'title': meeting.title,
+                'type': meeting.get_translation_type_display(),
+                'start_date': meeting.start_date.strftime('%Y-%m-%d %H:%M'),
+                'duration': f"{meeting.duration_minutes} minutes" if meeting.duration_minutes else "Not specified",
+                'location': get_meeting_location(meeting),
+                'is_urgent': is_urgent_meeting(meeting),
+                'status': meeting.get_status_display()
+            })
+
+        return JsonResponse({
+            'status': 'success',
+            'meetings': meetings_data
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

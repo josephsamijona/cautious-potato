@@ -1,9 +1,10 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Translation Management System{% endblock %}</title>
+    <title>{% block title %}DBD I&T{% endblock %}</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -30,26 +31,20 @@
                 <!-- Logo and primary nav -->
                 <div class="flex">
                     <div class="flex-shrink-0 flex items-center">
-                        <a href="#" class="text-2xl font-bold text-indigo-600">
-                            TMS
+                        <a href="{% url 'create_quote' %}" class="flex items-center">
+                            <img src="{% static 'img/logo.jpg' %}" alt="DBD I&T Logo" class="h-8 w-auto">
                         </a>
                     </div>
                     
                     <!-- Primary Navigation -->
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="#" 
-                           class="{% if request.resolver_match.url_name == 'home' %}border-indigo-500 text-gray-900{% else %}border-transparent text-gray-500{% endif %} 
-                                  inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            Dashboard
-                        </a>
-                        
-                        <a href="#"
+                        <a href="{% url 'create_quote' %}"
                            class="{% if request.resolver_match.url_name == 'create_quote' %}border-indigo-500 text-gray-900{% else %}border-transparent text-gray-500{% endif %}
                                   inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Request Quote
                         </a>
                         
-                        <a href="#"
+                        <a href="{% url 'quote_list' %}"
                            class="{% if request.resolver_match.url_name == 'quote_list' %}border-indigo-500 text-gray-900{% else %}border-transparent text-gray-500{% endif %}
                                   inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             My Quotes
@@ -59,34 +54,33 @@
 
                 <!-- User Menu -->
                 <div class="hidden sm:ml-6 sm:flex sm:items-center">
-                    <!-- Notifications -->
-                    <button class="p-1 rounded-full text-gray-400 hover:text-gray-500 relative">
-                        <span class="sr-only">View notifications</span>
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                        </svg>
-                        {% if unread_notifications_count > 0 %}
-                        <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white"></span>
-                        {% endif %}
-                    </button>
-
                     <!-- Profile dropdown -->
                     <div class="ml-3 relative">
                         <div class="flex items-center">
                             {% if request.user.is_authenticated %}
-                            <button class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                <span class="sr-only">Open user menu</span>
-                                {% if request.user.profile.profile_picture %}
-                                    <img class="h-8 w-8 rounded-full" src="{{ request.user.profile.profile_picture.url }}" alt="">
-                                {% else %}
-                                    <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                        <span class="text-indigo-800 font-medium text-sm">
-                                            {{ request.user.get_initials }}
-                                        </span>
-                                    </div>
-                                {% endif %}
-                            </button>
+                            <div class="relative">
+                                <button id="profileButton" 
+                                        class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <span class="sr-only">Open user menu</span>
+                                    {% if request.user.profile.profile_picture %}
+                                        <img class="h-8 w-8 rounded-full" src="{{ request.user.profile.profile_picture.url }}" alt="">
+                                    {% else %}
+                                        <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                            <span class="text-indigo-800 font-medium text-sm">
+                                                {{ request.user.get_initials }}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </button>
+                                <!-- Dropdown menu -->
+                                <div id="profileDropdown" 
+                                     class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    <a href="{% url 'logout' %}" 
+                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        Logout
+                                    </a>
+                                </div>
+                            </div>
                             {% else %}
                             <a href="{% url 'login' %}" class="text-gray-500 hover:text-gray-700">Login</a>
                             {% endif %}
@@ -105,25 +99,25 @@
                 </div>
             </div>
         </div>
-
         <!-- Mobile menu -->
         <div class="sm:hidden mobile-menu hidden">
             <div class="pt-2 pb-3 space-y-1">
-                <a href="#" 
-                   class="{% if request.resolver_match.url_name == 'home' %}bg-indigo-50 border-indigo-500 text-indigo-700{% else %}border-transparent text-gray-500{% endif %}
-                          block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-                    Dashboard
-                </a>
                 <a href="{% url 'create_quote' %}"
                    class="{% if request.resolver_match.url_name == 'create_quote' %}bg-indigo-50 border-indigo-500 text-indigo-700{% else %}border-transparent text-gray-500{% endif %}
                           block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
                     Request Quote
                 </a>
-                <a href="#"
+                <a href="{% url 'quote_list' %}"
                    class="{% if request.resolver_match.url_name == 'quote_list' %}bg-indigo-50 border-indigo-500 text-indigo-700{% else %}border-transparent text-gray-500{% endif %}
                           block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
                     My Quotes
                 </a>
+                {% if request.user.is_authenticated %}
+                <a href="{% url 'logout' %}"
+                   class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-500 hover:bg-gray-50 hover:border-gray-300">
+                    Logout
+                </a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -185,6 +179,25 @@
             mobileMenuButton.addEventListener('click', function() {
                 mobileMenu.classList.toggle('hidden');
             });
+
+            // Profile Dropdown
+            const profileButton = document.getElementById('profileButton');
+            const profileDropdown = document.getElementById('profileDropdown');
+            
+            if (profileButton && profileDropdown) {
+                // Toggle dropdown on button click
+                profileButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    profileDropdown.classList.toggle('hidden');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!profileButton.contains(e.target)) {
+                        profileDropdown.classList.add('hidden');
+                    }
+                });
+            }
         });
     </script>
 </body>
