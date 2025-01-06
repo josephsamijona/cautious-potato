@@ -55,6 +55,16 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.units import inch
+import json
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
+from django.utils import timezone
+from .models import TranslationRequest
+from .decorators import translator_required
+from .services.notification_service import AcceptanceNotificationService
+
 
 logger = logging.getLogger(__name__)
 
@@ -864,6 +874,13 @@ def accept_translation(request, translation_id):
             translation.notes = notes
         translation.save()
         
+        # Send notifications to all parties (admin, translator, and client)
+        try:
+            AcceptanceNotificationService.send_all_notifications(translation)
+        except Exception as notification_error:
+            # Log the error but don't stop the process
+            logger.error(f"Error sending notifications: {notification_error}")
+        
         return JsonResponse({
             'status': 'success',
             'message': 'Translation successfully accepted.',
@@ -871,14 +888,19 @@ def accept_translation(request, translation_id):
                 'id': translation.id,
                 'title': translation.title,
                 'status': 'ASSIGNED',
-                'start_date': translation.start_date.strftime('%Y-%m-%d %H:%M')
+                'start_date': translation.start_date.strftime('%Y-%m-%d %H:%M'),
+                'type': translation.translation_type,
+                'source_language': str(translation.source_language),
+                'target_language': str(translation.target_language),
+                'deadline': translation.deadline.strftime('%Y-%m-%d %H:%M')
             }
         })
             
     except Exception as e:
+        logger.error(f"Error accepting translation: {str(e)}")
         return JsonResponse({
             'status': 'error',
-            'message': str(e)
+            'message': "An error occurred while accepting the translation."
         }, status=500)
 
 @login_required
@@ -1150,3 +1172,4 @@ def get_upcoming_meetings(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+        

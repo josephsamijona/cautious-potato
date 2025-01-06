@@ -1,0 +1,45 @@
+
+<!-- templates/emails/translator_confirmation.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .important { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Translation Assignment Confirmation</h2>
+        <p>Dear {{ translator_name }},</p>
+        <p>Your acceptance of the translation assignment has been registered.</p>
+
+        <div class="details">
+            <h3>Assignment Details:</h3>
+            <ul>
+                <li>Title: {{ translation.title }}</li>
+                <li>Type: {{ translation.get_translation_type_display }}</li>
+                <li>From: {{ translation.source_language }}</li>
+                <li>To: {{ translation.target_language }}</li>
+                <li class="important">Deadline: {{ translation.deadline|date:"F j, Y, g:i a" }}</li>
+                {% if translation.is_live_interpretation %}
+                <li class="important">Start Time: {{ translation.start_date|date:"F j, Y, g:i a" }}</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <p><strong>Important Reminders:</strong></p>
+        <ul>
+            <li>Please ensure to meet the deadline</li>
+            <li>Contact us immediately if you encounter any issues</li>
+            <li>Maintain professional communication standards</li>
+            {% if translation.is_live_interpretation %}
+            <li>Be online/present at least 10 minutes before the scheduled time</li>
+            {% endif %}
+        </ul>
+
+        <p>If you need any assistance or have questions, please don't hesitate to contact us.</p>
+    </div>
+</body>
+</html>

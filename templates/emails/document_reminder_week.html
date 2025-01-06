@@ -1,0 +1,33 @@
+<!-- templates/emails/document_reminder_week.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .deadline-notice { background-color: #e3f2fd; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Weekly Reminder: Document Translation Due in 7 Days</h2>
+        <p>Hello {{ translator_name }},</p>
+
+        <div class="deadline-notice">
+            <p>This is a friendly reminder that you have a document translation due in 7 days.</p>
+        </div>
+
+        <div class="details">
+            <h3>Translation Details:</h3>
+            <ul>
+                <li>Project Title: {{ translation.title }}</li>
+                <li>Languages: {{ translation.source_language }} to {{ translation.target_language }}</li>
+                <li>Deadline: {{ translation.deadline|date:"F j, Y, g:i a" }}</li>
+                <li>Current Status: {{ translation.get_status_display }}</li>
+            </ul>
+        </div>
+
+        <p>Please ensure to maintain steady progress on this translation to meet the deadline.</p>
+    </div>
+</body>
+</html>

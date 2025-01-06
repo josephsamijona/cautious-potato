@@ -1,0 +1,36 @@
+<!-- templates/emails/client_translation_accepted.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .status { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Translation Request Update</h2>
+        <p>Dear {{ client_name }},</p>
+        <p>Good news! Your translation request has been accepted by our translator.</p>
+
+        <div class="details">
+            <h3>Translation Details:</h3>
+            <ul>
+                <li>Title: {{ translation.title }}</li>
+                <li>Type: {{ translation.get_translation_type_display }}</li>
+                <li>From: {{ translation.source_language }}</li>
+                <li>To: {{ translation.target_language }}</li>
+                <li>Expected Completion: {{ translation.deadline|date:"F j, Y, g:i a" }}</li>
+                {% if translation.is_live_interpretation %}
+                <li>Session Time: {{ translation.start_date|date:"F j, Y, g:i a" }}</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <p class="status">Status: In Progress</p>
+        <p>We will keep you updated on the progress of your translation.</p>
+        <p>If you have any questions or need to provide additional information, please don't hesitate to contact us.</p>
+    </div>
+</body>
+</html>

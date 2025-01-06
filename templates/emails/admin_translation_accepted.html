@@ -1,0 +1,32 @@
+<!-- templates/emails/admin_translation_accepted.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Translation Assignment Update</h2>
+        <p>A translation request has been accepted by a translator.</p>
+
+        <div class="details">
+            <h3>Translation Details:</h3>
+            <ul>
+                <li>Title: {{ translation.title }}</li>
+                <li>Type: {{ translation.get_translation_type_display }}</li>
+                <li>From: {{ translation.source_language }}</li>
+                <li>To: {{ translation.target_language }}</li>
+                <li>Translator: {{ translator_name }}</li>
+                <li>Client: {{ client_name }}</li>
+                <li>Deadline: {{ translation.deadline|date:"F j, Y, g:i a" }}</li>
+                <li>Price: ${{ translation.client_price }}</li>
+            </ul>
+        </div>
+
+        <p>Please review the assignment and monitor progress.</p>
+    </div>
+</body>
+</html>

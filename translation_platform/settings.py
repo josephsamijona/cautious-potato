@@ -61,7 +61,8 @@ INSTALLED_APPS = [
     'phonenumber_field',
     'django_countries',
     #"django.contrib.sites",
-
+    #'django_q',
+    'django_apscheduler',
     # Third party apps
     'corsheaders',
     'rest_framework',
@@ -240,3 +241,5 @@ if DEBUG:
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': lambda request: True,
     }
+    
+    
