@@ -1,20 +1,20 @@
-<!-- templates/emails/document_reminder_week.html -->
+<!-- templates/emails/document_reminder_urgent.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <style>
         .container { padding: 20px; font-family: Arial, sans-serif; }
         .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
-        .deadline-notice { background-color: #e3f2fd; padding: 10px; border-radius: 5px; }
+        .urgent-notice { background-color: #fff3cd; padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Weekly Reminder: Document Translation Due in 7 Days</h2>
+        <h2>Urgent Reminder: Translation Due in 3 Days</h2>
         <p>Hello {{ translator_name }},</p>
 
-        <div class="deadline-notice">
-            <p>This is a friendly reminder that you have a document translation due in 7 days.</p>
+        <div class="urgent-notice">
+            <p><strong>Important:</strong> Your translation deadline is approaching in 3 days.</p>
         </div>
 
         <div class="details">
@@ -27,7 +27,7 @@
             </ul>
         </div>
 
-        <p>Please ensure to maintain steady progress on this translation to meet the deadline.</p>
+        <p>Please ensure you have enough time to complete and review your translation before the deadline.</p>
     </div>
 </body>
 </html>

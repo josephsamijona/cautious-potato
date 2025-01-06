@@ -1,20 +1,20 @@
-<!-- templates/emails/document_reminder_week.html -->
+<!-- templates/emails/document_reminder_critical.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <style>
         .container { padding: 20px; font-family: Arial, sans-serif; }
         .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
-        .deadline-notice { background-color: #e3f2fd; padding: 10px; border-radius: 5px; }
+        .critical-notice { background-color: #f8d7da; padding: 10px; border-radius: 5px; color: #721c24; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Weekly Reminder: Document Translation Due in 7 Days</h2>
+        <h2>Critical Reminder: Translation Due Tomorrow</h2>
         <p>Hello {{ translator_name }},</p>
 
-        <div class="deadline-notice">
-            <p>This is a friendly reminder that you have a document translation due in 7 days.</p>
+        <div class="critical-notice">
+            <p><strong>Critical Notice:</strong> Your translation is due within 24 hours!</p>
         </div>
 
         <div class="details">
@@ -27,7 +27,15 @@
             </ul>
         </div>
 
-        <p>Please ensure to maintain steady progress on this translation to meet the deadline.</p>
+        <p>This is your final reminder. Please ensure to:</p>
+        <ul>
+            <li>Complete any remaining translation work</li>
+            <li>Review the entire document for accuracy</li>
+            <li>Check formatting and consistency</li>
+            <li>Submit your translation before the deadline</li>
+        </ul>
+
+        <p>If you anticipate any issues meeting this deadline, please contact support immediately.</p>
     </div>
 </body>
 </html>
