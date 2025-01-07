@@ -1,0 +1,56 @@
+<!-- templates/emails/meeting_reminder_1h.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .critical-box { background-color: #f8d7da; padding: 15px; border-radius: 5px; margin: 15px 0; color: #721c24; }
+        .immediate-action { background-color: #fff; padding: 10px; border-left: 4px solid #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>1-Hour Alert: Interpretation Session Starting Soon</h2>
+        <p>Hello {{ translator_name }},</p>
+
+        <div class="critical-box">
+            <p><strong>Your interpretation session begins in 1 hour!</strong></p>
+            {% if translation.translation_type == 'LIVE_ON_SITE' %}
+                <p>Please be on your way to the location if you haven't departed yet.</p>
+            {% else %}
+                <p>Please begin your final preparation and system checks.</p>
+            {% endif %}
+        </div>
+
+        <div class="details">
+            <h3>Immediate Access Details:</h3>
+            {% if translation.translation_type == 'LIVE_ON_SITE' %}
+                <p><strong>Location:</strong> {{ translation.address }}</p>
+            {% elif translation.translation_type == 'REMOTE_MEETING' %}
+                <p><strong>Meeting Link:</strong> {{ translation.meeting_link }}</p>
+            {% elif translation.translation_type == 'REMOTE_PHONE' %}
+                <p><strong>Phone Number:</strong> {{ translation.phone_number }}</p>
+            {% endif %}
+        </div>
+
+        <div class="immediate-action">
+            <h4>Final Checklist:</h4>
+            <ul>
+                {% if translation.translation_type == 'LIVE_ON_SITE' %}
+                    <li>Confirm you have the exact location</li>
+                    <li>Have your identification ready</li>
+                    <li>Contact number saved: [Contact Info]</li>
+                {% else %}
+                    <li>Test your audio one final time</li>
+                    <li>Close unnecessary applications</li>
+                    <li>Ensure your device is fully charged</li>
+                    <li>Have water and materials ready</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <p>If you experience any issues, please contact support immediately.</p>
+    </div>
+</body>
+</html>
