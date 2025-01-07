@@ -243,3 +243,23 @@ if DEBUG:
     }
     
     
+# Scheduler Configuration
+SCHEDULER_CONFIG = {
+    "apscheduler.jobstores.default": {
+        "class": "django_apscheduler.jobstores:DjangoJobStore"
+    },
+    'apscheduler.executors.default': {
+        'class': 'apscheduler.executors.pool:ThreadPoolExecutor',
+        'max_workers': '20'
+    },
+    'apscheduler.job_defaults': {
+        'coalesce': False,
+        'max_instances': 1
+    },
+    'apscheduler.timezone': 'UTC',
+}
+
+
+# Scheduler Config Variables
+SCHEDULER_AUTOSTART = True
+SCHEDULER_REMOVE_EXISTING_JOBS = True

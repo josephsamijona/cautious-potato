@@ -60,4 +60,6 @@ urlpatterns = [
     path('calendar/upcoming-meetings/', 
         views.get_upcoming_meetings, 
         name='upcoming_meetings'),
+    path('translations/<int:translation_id>/cancel/', views.cancel_translation, name='cancel_translation'),
+    path('translations/<int:translation_id>/update-schedule/', views.update_translation_schedule, name='update_schedule'),
 ]

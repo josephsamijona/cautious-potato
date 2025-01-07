@@ -66,6 +66,8 @@ from .decorators import translator_required
 from .services.notification_service import AcceptanceNotificationService
 from .services.document_reminder import DocumentReminderService
 from .services.meeting_reminder import MeetingReminderService
+from .services.calendar_service import CalendarService
+from django.utils.dateparse import parse_datetime
 
 
 logger = logging.getLogger(__name__)
@@ -888,12 +890,30 @@ def accept_translation(request, translation_id):
                 # For all other types (LIVE_ON_SITE, REMOTE_PHONE, REMOTE_MEETING)
                 MeetingReminderService.schedule_meeting_reminders(translation)
                 
+                # Send calendar invitation for live interpretations
+                try:
+                    CalendarService.send_calendar_invitation(translation)
+                    logger.info(f"Calendar invitation sent for translation {translation.id}")
+                except Exception as calendar_error:
+                    logger.error(f"Error sending calendar invitation: {calendar_error}")
+                
             # Log successful reminder scheduling
             logger.info(f"Reminders scheduled for translation {translation.id}")
             
         except Exception as notification_error:
             # Log the error but don't stop the process
             logger.error(f"Error in notification/reminder setup: {notification_error}")
+        
+        # Prepare calendar details for live interpretations
+        calendar_info = None
+        if translation.is_live_interpretation():
+            calendar_info = {
+                'event_time': translation.start_date.strftime('%Y-%m-%d %H:%M'),
+                'duration': translation.duration_minutes or 60,  # Default to 1 hour if not specified
+                'location': translation.address if translation.translation_type == 'LIVE_ON_SITE' 
+                          else translation.meeting_link if translation.translation_type == 'REMOTE_MEETING'
+                          else translation.phone_number
+            }
         
         return JsonResponse({
             'status': 'success',
@@ -906,7 +926,8 @@ def accept_translation(request, translation_id):
                 'type': translation.translation_type,
                 'source_language': str(translation.source_language),
                 'target_language': str(translation.target_language),
-                'deadline': translation.deadline.strftime('%Y-%m-%d %H:%M')
+                'deadline': translation.deadline.strftime('%Y-%m-%d %H:%M'),
+                #'calendar_info': calendar_info  # Include calendar info if available
             }
         })
             
@@ -1024,6 +1045,82 @@ def complete_translation(request, translation_id):
             'message': str(e)
         }, status=500)
         
+@login_required
+@translator_required
+@require_http_methods(["POST"])
+def update_translation_schedule(request, translation_id):
+    """Update the schedule of a translation session"""
+    try:
+        translation = get_object_or_404(
+            TranslationRequest,
+            id=translation_id,
+            translator=request.user
+        )
+        
+        data = json.loads(request.body)
+        new_start_date = parse_datetime(data.get('start_date'))
+        
+        if new_start_date:
+            translation.start_date = new_start_date
+            translation.save()
+            
+            if translation.is_live_interpretation():
+                # Send calendar update
+                CalendarService.update_calendar_event(translation)
+                
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Schedule updated successfully.'
+            })
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid date format'
+            }, status=400)
+            
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+@login_required
+@translator_required
+@require_http_methods(["POST"])
+def cancel_translation(request, translation_id):
+    """Cancel a translation session"""
+    try:
+        translation = get_object_or_404(
+            TranslationRequest,
+            id=translation_id,
+            translator=request.user
+        )
+        
+        translation.status = 'CANCELLED'
+        translation.save()
+        
+        if translation.is_live_interpretation():
+            # Send calendar cancellation
+            CalendarService.cancel_calendar_event(translation)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Translation cancelled successfully.'
+        })
+            
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
         
 @login_required
 @translator_required
