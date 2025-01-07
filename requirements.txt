@@ -48,3 +48,5 @@ PyPDF2
 #django-q
 setuptoolapscheduler 
 django-apscheduler
+icalendar
+pytz

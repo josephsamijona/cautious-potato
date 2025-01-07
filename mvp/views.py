@@ -64,6 +64,8 @@ from django.utils import timezone
 from .models import TranslationRequest
 from .decorators import translator_required
 from .services.notification_service import AcceptanceNotificationService
+from .services.document_reminder import DocumentReminderService
+from .services.meeting_reminder import MeetingReminderService
 
 
 logger = logging.getLogger(__name__)
@@ -876,10 +878,22 @@ def accept_translation(request, translation_id):
         
         # Send notifications to all parties (admin, translator, and client)
         try:
+            # Send acceptance notifications
             AcceptanceNotificationService.send_all_notifications(translation)
+            
+            # Schedule reminders based on translation type
+            if translation.translation_type == 'DOCUMENT':
+                DocumentReminderService.schedule_document_reminders(translation)
+            else:
+                # For all other types (LIVE_ON_SITE, REMOTE_PHONE, REMOTE_MEETING)
+                MeetingReminderService.schedule_meeting_reminders(translation)
+                
+            # Log successful reminder scheduling
+            logger.info(f"Reminders scheduled for translation {translation.id}")
+            
         except Exception as notification_error:
             # Log the error but don't stop the process
-            logger.error(f"Error sending notifications: {notification_error}")
+            logger.error(f"Error in notification/reminder setup: {notification_error}")
         
         return JsonResponse({
             'status': 'success',
