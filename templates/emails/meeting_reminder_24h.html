@@ -1,0 +1,50 @@
+<!-- templates/emails/meeting_reminder_24h.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .reminder-box { background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .checklist { background-color: #fff; padding: 10px; border-left: 4px solid #2196F3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>24-Hour Reminder: Upcoming Interpretation Session</h2>
+        <p>Hello {{ translator_name }},</p>
+
+        <div class="reminder-box">
+            <p><strong>Your interpretation session is scheduled in 24 hours.</strong></p>
+        </div>
+
+        <div class="details">
+            <h3>Session Details:</h3>
+            <ul>
+                <li>Type: {{ translation.get_translation_type_display }}</li>
+                <li>Title: {{ translation.title }}</li>
+                <li>Languages: {{ translation.source_language }} to {{ translation.target_language }}</li>
+                <li>Start Time: {{ translation.start_date|date:"F j, Y, g:i a" }}</li>
+                <li>Duration: {{ translation.duration_minutes }} minutes</li>
+                {% if translation.translation_type == 'LIVE_ON_SITE' %}
+                    <li>Location: {{ translation.address }}</li>
+                {% elif translation.translation_type == 'REMOTE_MEETING' %}
+                    <li>Meeting Link: {{ translation.meeting_link }}</li>
+                {% elif translation.translation_type == 'REMOTE_PHONE' %}
+                    <li>Phone Number: {{ translation.phone_number }}</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="checklist">
+            <h4>Preparation Checklist:</h4>
+            <ul>
+                <li>Review any provided materials</li>
+                <li>Check your equipment</li>
+                <li>Verify location/connection details</li>
+                <li>Plan to arrive/connect 15 minutes early</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

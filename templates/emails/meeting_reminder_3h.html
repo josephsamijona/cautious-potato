@@ -1,0 +1,53 @@
+<!-- templates/emails/meeting_reminder_3h.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { padding: 20px; font-family: Arial, sans-serif; }
+        .details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .urgent-box { background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .final-checks { background-color: #fff; padding: 10px; border-left: 4px solid #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>3-Hour Reminder: Interpretation Session</h2>
+        <p>Hello {{ translator_name }},</p>
+
+        <div class="urgent-box">
+            <p><strong>Your interpretation session begins in 3 hours!</strong></p>
+        </div>
+
+        <div class="details">
+            <h3>Session Details:</h3>
+            <ul>
+                <li>Type: {{ translation.get_translation_type_display }}</li>
+                <li>Start Time: {{ translation.start_date|date:"F j, Y, g:i a" }}</li>
+                {% if translation.translation_type == 'LIVE_ON_SITE' %}
+                    <li>Location: {{ translation.address }}</li>
+                    <li>Recommended departure time: [Calculate based on location]</li>
+                {% elif translation.translation_type == 'REMOTE_MEETING' %}
+                    <li>Meeting Link: {{ translation.meeting_link }}</li>
+                {% elif translation.translation_type == 'REMOTE_PHONE' %}
+                    <li>Phone Number: {{ translation.phone_number }}</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="final-checks">
+            <h4>Pre-Session Checklist:</h4>
+            <ul>
+                {% if translation.translation_type == 'LIVE_ON_SITE' %}
+                    <li>Check traffic conditions</li>
+                    <li>Prepare your travel documents</li>
+                {% else %}
+                    <li>Test your internet connection</li>
+                    <li>Check audio/video equipment</li>
+                    <li>Prepare backup communication method</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+
